@@ -5,7 +5,7 @@
 ![LangChain](https://img.shields.io/badge/LangChain-RAG-yellow?logo=langchain)
 ![SQLite](https://img.shields.io/badge/SQLite-DB-lightgrey?logo=sqlite)
 
-A full-stack conversational hospital assistant powered by Gemini, LangGraph, and Retrieval-Augmented Generation — complete with FastAPI backend, TailwindCSS web UI, and SQL-driven memory and appointment management.
+A full-stack end-to-end conversational hospital assistant powered by Gemini, LangGraph, and Retrieval-Augmented Generation — complete with FastAPI backend, TailwindCSS web UI, and SQL-driven memory and appointment management.
 
 ---
 
@@ -62,7 +62,7 @@ UI (Tailwind HTML) → FastAPI → LangGraph → Router
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourname/hospital-agent.git
+git clone https://github.com/Kabir2005/Hospital-Management-Agent.git
 cd hospital-agent/Hospital_management_system
 ```
 
@@ -72,9 +72,10 @@ pip install -r requirements.txt
 ```
 
 ### 3. Environment Setup
-- Add your Gemini API key to a `.env` file:
+- Add your API keys to a `.env` file:
   ```env
   GEMINI_API_KEY=your-gemini-api-key
+  TAVILY-API-KEY=your-tavily-api-key
   ```
 - Prepare `kailash_info.txt` with hospital data (sample provided).
 - Set up `hospital.db` (SQLite) with the correct schema for appointments/patients.
