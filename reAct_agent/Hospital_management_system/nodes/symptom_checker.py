@@ -1,3 +1,4 @@
+import os
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain import hub
 from langgraph.prebuilt import create_react_agent
@@ -29,46 +30,66 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from agent_state import HospitalState
 load_dotenv()
 
-llm=ChatGoogleGenerativeAI(model="gemini-2.0-flash-001")
+import asyncio
+from mcp import ClientSession
+from mcp.client.stdio import stdio_client
+from mcp.client.stdio import StdioServerParameters
+from langchain_mcp_adapters.tools import load_mcp_tools
 
-search_tool=TavilySearchResults()
-llm_with_search_tool=llm.bind_tools(tools=[search_tool])
+from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import BaseModel, Field
+from typing import Optional, Literal
 
+
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-001")
+
+# ✅ Function to load Tavily MCP tool via stdio
+async def load_tavily_mcp_tool():
+    server_params = StdioServerParameters(
+        command="npx",
+        args=["-y", "tavily-mcp@0.1.4"],
+        env={
+            **os.environ,  # inherit current env
+            "TAVILY_API_KEY": os.getenv("TAVILY_API_KEY")  # explicitly set your key
+        },
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await load_mcp_tools(session)
+            return tools
 
 class SymptomCheckerResponse(BaseModel):
-        follow_up_questions: Optional[str] = Field(
-            default=None,
-            description="Any additional questions needed for diagnosis, such as age, gender, duration of symptoms. If none, return " 
-            "None."
-        )
-        diagnosis_summary: str = Field(
-            ...,
-            description="Explanation of possible causes, seriousness (mild/moderate/severe), and next steps (e.g., rest, medication, see a doctor)."
-        )
-        suggested_department: Literal[
-            "Cardiology",
-            "Neurology & Neurosurgery",
-            "Orthopedics",
-            "Gynecology & Obstetrics",
-            "Pediatrics",
-            "ENT",
-            "Dermatology",
-            "Gastroenterology",
-            "Urology",
-            "Psychiatry & Mental Health"
-        ] = Field(
-            ...,
-            description="The most appropriate hospital department the patient should visit for further evaluation, "
-        "based on the presented symptoms. Choose one from the predefined list of actual departments "
-        "at Kailash Hospital. This field must align with medically relevant specialties such as ENT "
-        "for ear infections, Cardiology for chest pain, or Dermatology for skin issues."
-        )
+    follow_up_questions: Optional[str] = Field(
+        default=None,
+        description="Any additional questions needed for diagnosis, such as age, gender, duration of symptoms. If none, return None."
+    )
+    diagnosis_summary: str = Field(
+        ...,
+        description="Explanation of possible causes, seriousness (mild/moderate/severe), and next steps (e.g., rest, medication, see a doctor)."
+    )
+    suggested_department: Literal[
+        "Cardiology",
+        "Neurology & Neurosurgery",
+        "Orthopedics",
+        "Gynecology & Obstetrics",
+        "Pediatrics",
+        "ENT",
+        "Dermatology",
+        "Gastroenterology",
+        "Urology",
+        "Psychiatry & Mental Health"
+    ] = Field(
+        ...,
+        description="The most appropriate hospital department the patient should visit for further evaluation."
+    )
 
+# ✅ Updated symptom_checker function to load MCP tools and bind them
+async def symptom_checker(state: HospitalState, tavily_tools) -> HospitalState:
+    query = state["messages"][-1].content
 
-def symptom_checker(state: HospitalState) -> HospitalState:
-        query = state["messages"][-1].content
-
-        system_prompt = """
+    system_prompt = """
 You are a medically knowledgeable assistant helping users understand their symptoms.
 
 Your goal is to clearly and informatively explain:
@@ -76,7 +97,7 @@ Your goal is to clearly and informatively explain:
 2. Whether the situation might be serious or not,
 3. What next steps to take — such as rest, over-the-counter medication, or seeing a specialist.
 
-If the symptoms are vague, uncommon, complex, or could point to more than one cause, you must use the `search_tool` to gather reliable and up-to-date information before replying.
+If the symptoms are vague, uncommon, complex, or could point to more than one cause, you must use the search tool-'tavily_search_results_json]` to gather reliable and up-to-date information before replying.
 
 **Avoid giving vague or generic suggestions. Do not say "could be many things" or "you should see a doctor" without first using the `search_tool` to find plausible causes.**
 
@@ -85,7 +106,7 @@ You must return your response in the following format:
 
 ---
 🔍 Follow-up Questions-/n
- (Ask if any key information is missing — such as age, duration, recent travel, etc. Otherwise, write "None")
+(Ask if any key information is missing — such as age, duration, recent travel, etc. Otherwise, write "None")
 
 📋 Possible Causes & Summary: /n
 (Summarize what the symptoms may point toward, including any systems/organs possibly involved, the seriousness,and next steps)
@@ -109,23 +130,29 @@ Rule-do not suggest or mention a department not present in the above list.
 End your message with:
 
 "Would you like to book an appointment with a (Suggested Department) specialist?"
-
 """
 
+    # ✅ Load Tavily MCP tools dynamically
+    # tavily_tools = await load_tavily_mcp_tool()
 
-        
-        full_prompt = f"{system_prompt}\n\nSymptom: {query}\n\nResponse:"
-        response=llm_with_search_tool.invoke(full_prompt)
-        # response = llm_with_search_tool.with_structured_output(SymptomCheckerResponse).invoke(full_prompt)
-        # formatted_response =(
-        # f"🔍 **Follow-up Questions:* {response.follow_up_questions or 'None'}\n\n"
-        # f"📋 **Diagnosis Summary:** {response.diagnosis_summary}\n\n"
-        # f"🏥 **Suggested Department:** {response.suggested_department}\n\n"
-        # f"Would you like to book an appointment at Kailash Hospital with a {response.suggested_department} specialist?"
-        # )
-        
-        return {
-            **state,
-            "messages": state["messages"] + [response],#replace response with AIMessage[content=response.content] orformatted_response
-            "rewrite_count": 0
-        }
+    # ✅ Bind Gemini with Tavily MCP tools
+    llm_with_tavily_mcp = llm.bind_tools(tools=tavily_tools)
+
+    full_prompt = f"{system_prompt}\n\nSymptom: {query}\n\nResponse:"
+
+    # ✅ Invoke the LLM with MCP tool binding
+    response = await llm_with_tavily_mcp.ainvoke(full_prompt)
+
+    return {
+        **state,
+        "messages": state["messages"] + [response],
+        "rewrite_count": 0
+    }
+
+# # ✅ For standalone testing
+# if __name__ == "__main__":
+#     sample_state = {
+#         "messages": [{"content": "I have chest pain and shortness of breath"}],
+#         "rewrite_count": 0
+#     }
+#     asyncio.run(symptom_checker(sample_state))

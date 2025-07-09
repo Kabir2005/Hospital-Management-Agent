@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, AIMessage
-from agent_runnable import app, config
+from agent_runnable import init_app, config  # ✅ import init_app instead of app
 import traceback
 import sys
 
@@ -11,13 +11,20 @@ app_fastapi = FastAPI()
 # Enable CORS
 app_fastapi.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this to your frontend domain in production
+    allow_origins=["*"],  # Change in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
 )
 
-# Define input schema with field validations
+agent_app = None  # ✅ define agent_app globally
+
+@app_fastapi.on_event("startup")
+async def startup_event():
+    global agent_app
+    agent_app = await init_app()  # ✅ initialize app at startup
+
+# Define input schema
 class UserInput(BaseModel):
     message: str = Field(..., min_length=1, description="User message")
     patient_id: str | None = Field(None, description="Unique patient ID")
@@ -25,8 +32,11 @@ class UserInput(BaseModel):
 
 @app_fastapi.post("/chat")
 async def chat_endpoint(user_input: UserInput):
-    message = user_input.message.strip()
+    global agent_app
+    if agent_app is None:
+        raise HTTPException(status_code=500, detail="Agent not initialized yet.")
 
+    message = user_input.message.strip()
     if not message:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
@@ -36,7 +46,6 @@ async def chat_endpoint(user_input: UserInput):
     if not user_input.patient_id:
         return {"response": f"Thanks {user_input.patient_name}, now enter your Patient ID."}
 
-    # Define conversation state
     state = {
         "messages": [HumanMessage(content=message)],
         "patient_name": user_input.patient_name,
@@ -48,10 +57,12 @@ async def chat_endpoint(user_input: UserInput):
         thread_id = user_input.patient_id
         config_with_thread = {"configurable": {"thread_id": thread_id}}
 
-        events = app.stream(state, config=config_with_thread, stream_mode="values")
         response_chunks = []
 
-        for event in events:
+        # ✅ Use async streaming to avoid InvalidStateError with AsyncSqliteSaver
+        events = agent_app.astream(state, config=config_with_thread, stream_mode="values")
+
+        async for event in events:
             if not event.get("messages"):
                 continue
             last_msg = event["messages"][-1]
