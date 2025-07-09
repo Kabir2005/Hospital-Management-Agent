@@ -10,3 +10,5 @@ pydantic
 chromadb
 sentence-transformers
 IPython 
+mcp
+langchain-mcp-adapters
