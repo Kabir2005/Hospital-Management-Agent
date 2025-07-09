@@ -5,12 +5,12 @@
 ![LangChain](https://img.shields.io/badge/LangChain-RAG-yellow?logo=langchain)
 ![SQLite](https://img.shields.io/badge/SQLite-DB-lightgrey?logo=sqlite)
 
-A full-stack end-to-end conversational hospital assistant powered by Gemini, LangGraph, and Retrieval-Augmented Generation — complete with FastAPI backend, TailwindCSS web UI, and SQL-driven memory and appointment management.
+A full-stack conversational hospital assistant powered by Gemini, LangGraph, Retrieval-Augmented Generation, and TavilyMCP — complete with FastAPI backend, TailwindCSS web UI, and SQL-driven memory and appointment management.
 
 ---
 
 ## 🚀 Overview
-Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant designed to streamline patient interaction, symptom triage, and appointment workflows via natural conversation. It offers a rich chat interface powered by Gemini (gemini-2.0-flash-001) and a modular backend built using LangGraph, LangChain, FastAPI, and SQL (SQLite).
+Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant designed to streamline patient interaction, symptom triage, and appointment workflows via natural conversation. It offers a rich chat interface powered by Gemini (gemini-2.0-flash-001) and a modular backend built using LangGraph, LangChain, FastAPI, SQL (SQLite), and TavilyMCP for advanced search.
 
 **Key Capabilities:**
 - 🔍 Answer factual queries about Kailash Hospital (departments, timings, services, etc.)
@@ -18,6 +18,7 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 - 📅 Handle appointment workflows (viewing, scheduling, updating) using SQL logic
 - 🧠 Track memory, patient state, and chat history persistently via SQLite
 - 💬 Serve conversations through a web-based chat UI styled with Tailwind CSS
+- 🌐 Use TavilyMCP for real-time, high-quality web search in symptom triage and information retrieval
 
 ---
 
@@ -26,8 +27,9 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 - **Gemini LLM + LangGraph State Machine:** Structured, node-based reasoning over user messages.
 - **Retrieval-Augmented Generation (RAG):** Answers grounded in official Kailash Hospital knowledge base using HuggingFace embeddings + Chroma.
 - **SQL-Based Logic:** Appointment workflows and persistent memory via SQLite.
+- **TavilyMCP Integration:** Uses TavilyMCP (via MCP protocol and Node.js) for advanced, real-time web search in medical triage and information flows.
+- **Async Tool Loading:** TavilyMCP tools are loaded asynchronously and bound to the LLM at runtime for dynamic, up-to-date search.
 - **Beautiful Tailwind UI:** Minimal, responsive HTML+Tailwind interface.
-- **Search + Tools Integration:** Supports external search tools and custom APIs for symptom diagnosis.
 
 ---
 
@@ -41,7 +43,7 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 | RAG        | RetrievalQA, Chroma, HuggingFace (MiniLM-L6-v2)                     |
 | Memory     | LangGraph SqliteSaver (persistent, thread-based)                    |
 | Database   | SQLite + SQL logic for appointments and patient history             |
-| Tools      | TavilySearchResults, Symptom API, LangChain SQL agent               |
+| Tools      | TavilyMCP (via MCP protocol), LangChain SQL agent                   |
 
 ---
 
@@ -52,7 +54,7 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 ```
 UI (Tailwind HTML) → FastAPI → LangGraph → Router
   ├─ InfoNode → RAGChain → ChromaDB
-  ├─ SymptomChecker → ToolNode
+  ├─ SymptomChecker → TavilyMCP ToolNode
   └─ Appointment → SQLAgent → SQLite
 ```
 
@@ -62,30 +64,43 @@ UI (Tailwind HTML) → FastAPI → LangGraph → Router
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Kabir2005/Hospital-Management-Agent.git
+git clone https://github.com/yourname/hospital-agent.git
 cd hospital-agent/Hospital_management_system
 ```
 
-### 2. Install Dependencies
+### 2. Install Python Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Environment Setup
-- Add your API keys to a `.env` file:
+### 3. Install Node.js and TavilyMCP
+- **Node.js** is required for TavilyMCP. [Download Node.js](https://nodejs.org/)
+- TavilyMCP is run via `npx` (no global install needed):
+  - The backend will launch TavilyMCP using:
+    ```bash
+    npx -y tavily-mcp@0.1.4
+    ```
+- **Tavily API Key:**
+  - Get your API key from [Tavily](https://app.tavily.com/).
+  - Add it to your `.env` file:
+    ```env
+    TAVILY_API_KEY=your-tavily-api-key
+    ```
+
+### 4. Environment Setup
+- Add your Gemini API key to `.env`:
   ```env
   GEMINI_API_KEY=your-gemini-api-key
-  TAVILY-API-KEY=your-tavily-api-key
   ```
 - Prepare `kailash_info.txt` with hospital data (sample provided).
 - Set up `hospital.db` (SQLite) with the correct schema for appointments/patients.
 
-### 4. Run the FastAPI Server
+### 5. Run the FastAPI Server
 ```bash
 uvicorn api_setup:app --reload
 ```
 
-### 5. Access the UI
+### 6. Access the UI
 Open your browser at [http://localhost:8000](http://localhost:8000)
 
 ---
@@ -93,14 +108,8 @@ Open your browser at [http://localhost:8000](http://localhost:8000)
 ## 💬 Example Interactions
 
 ```
-User: What are the OPD timings on Sunday?
-Assistant: OPD is open from 10 AM to 1 PM on Sundays for select departments. Please check with the reception for your specialty.
-
 User: I have mild chest pain and shortness of breath.
-Assistant: These symptoms may indicate a cardiac issue. I recommend consulting the Cardiology department. Would you like help accessing appointment options?
-
-User: Show upcoming appointments for Kabir Gupta.
-Assistant: You have an appointment with Dr. R. Sharma (Cardiology) at 11:00 AM on Monday. Would you like to reschedule or cancel it?
+Assistant: These symptoms may indicate a cardiac issue. (Uses TavilyMCP to search for latest guidelines.) I recommend consulting the Cardiology department. Would you like help accessing appointment options?
 ```
 
 ---
@@ -120,6 +129,18 @@ Hospital_management_system/
 ├── hospital_agent_graph.png  # Architecture diagram
 └── ...
 ```
+
+---
+
+## 🧩 TavilyMCP Integration
+- **What is TavilyMCP?**
+  - TavilyMCP is a Node.js-based MCP (Machine Control Protocol) server that provides high-quality, real-time web search as a tool for LLM agents.
+- **How is it used?**
+  - The backend launches TavilyMCP via `npx` and connects using the `mcp` and `langchain-mcp-adapters` Python packages.
+  - The symptom checker and other nodes can invoke TavilyMCP tools asynchronously for up-to-date information.
+- **Setup:**
+  - Requires Node.js and a Tavily API key in your `.env` file.
+  - No manual server start needed; the backend handles launching TavilyMCP as needed.
 
 ---
 
