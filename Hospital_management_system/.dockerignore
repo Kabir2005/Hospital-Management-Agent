@@ -1,0 +1,32 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Environment variables (for security)
+.env
+
+# Database files (these will be created by the application)
+*.db-shm
+*.db-wal
+
+# Git
+.git/
+.gitignore
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db
