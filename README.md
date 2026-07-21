@@ -49,7 +49,7 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 
 ## 🖥️ Architecture
 
-![Hospital Agent Graph](hospital_agent_graph.png)
+![Hospital Agent Graph](Hospital_management_system/hospital_agent_graph.png)
 
 ```
 UI (Tailwind HTML) → FastAPI → LangGraph → Router
@@ -66,8 +66,8 @@ UI (Tailwind HTML) → FastAPI → LangGraph → Router
 
 #### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourname/hospital-agent.git
-cd hospital-agent/Hospital_management_system
+git clone https://github.com/Kabir2005/Hospital-Management-Agent.git
+cd Hospital-Management-Agent/Hospital_management_system
 ```
 
 #### 2. Environment Setup
@@ -89,8 +89,8 @@ Open your browser at [http://localhost:8000](http://localhost:8000)
 
 #### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourname/hospital-agent.git
-cd hospital-agent/Hospital_management_system
+git clone https://github.com/Kabir2005/Hospital-Management-Agent.git
+cd Hospital-Management-Agent/Hospital_management_system
 ```
 
 #### 2. Install Python Dependencies
