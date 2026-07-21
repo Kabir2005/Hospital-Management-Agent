@@ -1,5 +1,4 @@
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain import hub
 from langgraph.prebuilt import create_react_agent
 from langgraph.prebuilt.tool_node import ToolNode
 from langgraph.types import Command
@@ -12,7 +11,6 @@ from langgraph.graph import StateGraph, add_messages
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.embeddings import OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from dotenv import load_dotenv
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -23,7 +21,7 @@ from typing import Literal, Annotated, Sequence, List
 from langchain_community.tools import TavilySearchResults
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
-from langchain.document_loaders import TextLoader
+from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from agent_state import HospitalState
@@ -37,7 +35,9 @@ def get_todays_date() -> str:
 
 llm=ChatGoogleGenerativeAI(model="gemini-2.0-flash-001")
 
-db = SQLDatabase.from_uri("sqlite:////app/databases/hospital.db")
+import os
+_DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "databases", "hospital.db")
+db = SQLDatabase.from_uri(f"sqlite:///{_DB_FILE}")
 toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 sqltools=toolkit.get_tools()
 

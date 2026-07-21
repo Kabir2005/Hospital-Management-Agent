@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, AIMessage
-from agent_runnable import init_app, config  # ✅ import init_app instead of app
+from agent_runnable import init_app, shutdown_app, config  # ✅ import init_app instead of app
 import traceback
 import sys
 import os
@@ -26,6 +26,11 @@ agent_app = None  # ✅ define agent_app globally
 async def startup_event():
     global agent_app
     agent_app = await init_app()  # ✅ initialize app at startup
+
+
+@app_fastapi.on_event("shutdown")
+async def shutdown_event():
+    await shutdown_app()  # ✅ close the long-lived MCP session/subprocess
 
 # Define input schema
 class UserInput(BaseModel):

@@ -1,5 +1,4 @@
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain import hub
 from langgraph.prebuilt import create_react_agent
 from langgraph.prebuilt.tool_node import ToolNode
 from langgraph.types import Command
@@ -12,7 +11,6 @@ from langgraph.graph import StateGraph, add_messages
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.embeddings import OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from dotenv import load_dotenv
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -23,7 +21,7 @@ from typing import Literal, Annotated, Sequence, List
 from langchain_community.tools import TavilySearchResults
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
-from langchain.document_loaders import TextLoader
+from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import PromptTemplate
 
@@ -36,8 +34,12 @@ llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-001")
 
 # ------------------ RAG SETUP ------------------
 
+import os
+# Resolve paths relative to the project root so the app runs both locally and in Docker.
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # 1. Load Kailash Hospital info
-loader = TextLoader("/app/kailash_info.txt")
+loader = TextLoader(os.path.join(BASE_DIR, "kailash_info.txt"))
 documents = loader.load()
 
 # 2. Split text into chunks
@@ -50,7 +52,7 @@ docs = splitter.split_documents(documents)
 # 3. Initialize embedding model and Chroma vectorstore
 embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 embedding_db = Chroma(
-    persist_directory="/app/databases/Hospital_RAG_db",
+    persist_directory=os.path.join(BASE_DIR, "databases", "Hospital_RAG_db"),
     embedding_function=embedding_model
 )
 

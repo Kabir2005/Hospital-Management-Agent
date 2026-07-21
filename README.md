@@ -3,20 +3,20 @@
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-green?logo=fastapi)
 ![LangGraph](https://img.shields.io/badge/LangGraph-graph--based-blueviolet?logo=python)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-DB-blue?logo=postgresql)
+![SQLite](https://img.shields.io/badge/SQLite-DB-blue?logo=sqlite)
 
-A full-stack conversational hospital assistant powered by Gemini, LangGraph, Retrieval-Augmented Generation, and MCP (Model Context Protocol) server-based tool calling — complete with FastAPI backend, TailwindCSS web UI, and PostgreSQL-driven memory and appointment management.
+A full-stack conversational hospital assistant powered by Gemini, LangGraph, Retrieval-Augmented Generation, and MCP (Model Context Protocol) server-based tool calling — complete with FastAPI backend, TailwindCSS web UI, and SQLite-driven memory and appointment management.
 
 ---
 
 ## 🚀 Overview
-Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant designed to streamline patient interaction, symptom triage, and appointment workflows via natural conversation. It offers a rich chat interface powered by Gemini (gemini-2.0-flash-001) and a modular backend built using LangGraph, FastAPI, PostgreSQL, and MCP (Model Context Protocol) for advanced tool integration.
+Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant designed to streamline patient interaction, symptom triage, and appointment workflows via natural conversation. It offers a rich chat interface powered by Gemini (gemini-2.0-flash-001) and a modular backend built using LangGraph, FastAPI, SQLite, and MCP (Model Context Protocol) for advanced tool integration.
 
 **Key Capabilities:**
 - 🔍 Answer factual queries about Kailash Hospital (departments, timings, services, etc.)
 - 🩺 Perform smart symptom checking with triage suggestions and department routing
-- 📅 Handle appointment workflows (viewing, scheduling, updating) using PostgreSQL logic
-- 🧠 Track memory, patient state, and chat history persistently via PostgreSQL
+- 📅 Handle appointment workflows (viewing, scheduling, updating) using SQLite logic
+- 🧠 Track memory, patient state, and chat history persistently via SQLite
 - 💬 Serve conversations through a web-based chat UI styled with Tailwind CSS
 - 🌐 Use MCP server-based tools (TavilyMCP) for real-time, high-quality web search in symptom triage and information retrieval
 
@@ -26,7 +26,7 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 - **FastAPI-powered Backend:** Robust, asynchronous API layer for the hospital agent.
 - **Gemini LLM + LangGraph State Machine:** Structured, node-based reasoning over user messages.
 - **Retrieval-Augmented Generation (RAG):** Answers grounded in official Kailash Hospital knowledge base using HuggingFace embeddings + Chroma.
-- **PostgreSQL-Based Logic:** Appointment workflows and persistent memory via PostgreSQL.
+- **SQLite-Based Logic:** Appointment workflows and persistent memory via SQLite.
 - **MCP Server Integration:** Uses MCP (Model Context Protocol) for modular tool integration, including TavilyMCP for advanced, real-time web search in medical triage and information flows.
 - **Modular Tooling:** Easily extend the agent with new tools and capabilities via the MCP protocol.
 - **Beautiful Tailwind UI:** Minimal, responsive HTML+Tailwind interface.
@@ -42,7 +42,7 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 | Orchestration | LangGraph                                                        |
 | RAG        | RetrievalQA, Chroma, HuggingFace (MiniLM-L6-v2)                     |
 | Memory     | LangGraph SqliteSaver (persistent, thread-based)                    |
-| Database   | PostgreSQL + SQL logic for appointments and patient history         |
+| Database   | SQLite + SQL logic for appointments and patient history         |
 | Tools      | MCP (Model Context Protocol), TavilyMCP, LangGraph SQL agent        |
 
 ---
@@ -55,7 +55,7 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 UI (Tailwind HTML) → FastAPI → LangGraph → Router
   ├─ InfoNode → RAGChain → ChromaDB
   ├─ SymptomChecker → MCP ToolNode (TavilyMCP)
-  └─ Appointment → SQLAgent → PostgreSQL
+  └─ Appointment → SQLAgent → SQLite
 ```
 
 ---
@@ -113,19 +113,25 @@ pip install -r requirements.txt
     ```
 
 #### 4. Environment Setup
-- Add your Gemini API key to `.env`:
+- Copy `.env.example` to `.env` and fill in your keys:
   ```env
   GOOGLE_API_KEY=your-gemini-api-key
+  TAVILY_API_KEY=your-tavily-api-key
   ```
-- Prepare `kailash_info.txt` with hospital data (sample provided).
-- Set up your database with the correct schema for appointments/patients.
+- `kailash_info.txt` (the RAG knowledge base) is included.
 
-#### 5. Run the FastAPI Server
+#### 5. Seed the SQLite database
+Creates `databases/hospital.db` with sample doctors, appointments, and patient history:
+```bash
+cd databases && python db_setup.py && cd ..
+```
+
+#### 6. Run the FastAPI Server
 ```bash
 uvicorn api_setup:app_fastapi --host 0.0.0.0 --port 8000
 ```
 
-#### 6. Access the UI
+#### 7. Access the UI
 Open your browser at [http://localhost:8000](http://localhost:8000)
 
 ---
@@ -148,7 +154,7 @@ Hospital_management_system/
 ├── sql_agent.py              # SQL agent for appointments
 ├── nodes/                    # LangGraph nodes
 ├── kailash_info_store/       # Info retrieval logic
-├── databases/                # PostgreSQL DB and helpers
+├── databases/                # SQLite DB and helpers
 ├── kailash_info.txt          # Hospital info knowledge base
 ├── chatbot.html              # Web UI
 ├── hospital_agent_graph.png  # Architecture diagram

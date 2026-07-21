@@ -3,8 +3,10 @@ from langgraph.graph import StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 import asyncio
+import os
 import aiosqlite
 from os import environ
+from contextlib import AsyncExitStack
 
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from agent_state import HospitalState
@@ -45,9 +47,25 @@ state = {
 
 app = None  # ✅ Initialize app globally
 
+# Resolve the memory DB relative to this file so it works locally and in Docker
+# (in the container this file lives at /app, so this still resolves to /app/databases/...).
+DB_PATH = os.getenv(
+    "HOSPITAL_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "databases", "hospital_agent_memory.db"),
+)
+
+# The MCP (Tavily) subprocess and session must stay alive for the whole lifetime of the
+# app, since the compiled graph holds tools bound to that session. We keep the async
+# contexts open in a module-level ExitStack instead of a `with` block that would close
+# them (and kill the tool connection) the moment init_app() returns.
+_mcp_stack: AsyncExitStack | None = None
+
+
 async def init_app():
-    global app
-    conn = await aiosqlite.connect("/app/databases/hospital_agent_memory.db")
+    global app, _mcp_stack
+
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = await aiosqlite.connect(DB_PATH)
     memory = AsyncSqliteSaver(conn)
 
     from mcp.client.stdio import stdio_client, StdioServerParameters
@@ -55,31 +73,45 @@ async def init_app():
     from langchain_mcp_adapters.tools import load_mcp_tools
     from langgraph.prebuilt.tool_node import ToolNode
 
+    tavily_key = environ.get("TAVILY_API_KEY")
+    if not tavily_key:
+        raise RuntimeError(
+            "TAVILY_API_KEY is not set. Add it to your .env file (see .env.example) — "
+            "the symptom checker's web-search tool needs it."
+        )
+
     server_params = StdioServerParameters(
         command="npx",
         args=["-y", "tavily-mcp@0.1.4"],
-        env={
-            **environ,
-            "TAVILY_API_KEY": environ["TAVILY_API_KEY"],
-        },
+        env={**environ, "TAVILY_API_KEY": tavily_key},
     )
 
-    async with stdio_client(server_params) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            tavily_tools = await load_mcp_tools(session)
+    # Open the MCP stdio client + session and keep them open for the app's lifetime.
+    _mcp_stack = AsyncExitStack()
+    read, write = await _mcp_stack.enter_async_context(stdio_client(server_params))
+    session = await _mcp_stack.enter_async_context(ClientSession(read, write))
+    await session.initialize()
+    tavily_tools = await load_mcp_tools(session)
 
-            symptom_tool_node = ToolNode(tavily_tools)
-            graph.add_node("symptom_tool_node", symptom_tool_node)
-            graph.add_edge("symptom_tool_node", "symptom_checker")
+    symptom_tool_node = ToolNode(tavily_tools)
+    graph.add_node("symptom_tool_node", symptom_tool_node)
+    graph.add_edge("symptom_tool_node", "symptom_checker")
 
-            async def symptom_checker_node(state):
-                return await symptom_checker(state, tavily_tools)
+    async def symptom_checker_node(state):
+        return await symptom_checker(state, tavily_tools)
 
-            graph.add_node("symptom_checker", symptom_checker_node)
+    graph.add_node("symptom_checker", symptom_checker_node)
 
-            app = graph.compile(checkpointer=memory)
-            return app  # ✅ return the compiled app
+    app = graph.compile(checkpointer=memory)
+    return app  # ✅ return the compiled app
+
+
+async def shutdown_app():
+    """Close the long-lived MCP session/subprocess on app shutdown."""
+    global _mcp_stack
+    if _mcp_stack is not None:
+        await _mcp_stack.aclose()
+        _mcp_stack = None
 
 # ✅ Do not run init_app directly if imported in FastAPI
 if __name__ == "__main__":

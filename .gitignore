@@ -1,4 +1,8 @@
 .DS_Store
 .env
 __pycache__/
-*.py[cod]
+*.pyc
+# local virtualenv
+Hospital_management_system/.venv/
+# generated at runtime (checkpointer memory)
+**/hospital_agent_memory.db

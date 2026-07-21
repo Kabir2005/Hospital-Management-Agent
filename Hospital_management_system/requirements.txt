@@ -17,4 +17,5 @@ orjson>=3.9.10
 sqlite-vec>=0.0.1
 huggingface-hub>=0.19.4
 tavily-python>=0.2.2
-requests>=2.31.0
+requests>=2.31.0langgraph-checkpoint-sqlite>=1.0.0
+numpy<2
