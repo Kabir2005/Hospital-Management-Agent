@@ -128,7 +128,12 @@ async def chat_endpoint(user_input: UserInput):
 app_fastapi.mount("/static", StaticFiles(directory="."), name="static")
 
 @app_fastapi.get("/")
-def root():
+async def root():
+    # Serve the chat UI at the root so the base URL isn't a dead-end.
+    return FileResponse("chatbot.html")
+
+@app_fastapi.get("/health")
+def health():
     return {"status": "Hospital agent is running."}
 
 @app_fastapi.get("/chatbot.html")
