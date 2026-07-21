@@ -15,6 +15,7 @@ services:
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
+      - PORT=8000
     healthcheck:
       test: ["CMD", "python", "/app/healthcheck.py"]
       interval: 30s

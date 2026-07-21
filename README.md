@@ -35,7 +35,8 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 - **SQLite-Based Logic:** Appointment workflows and persistent memory via SQLite.
 - **MCP Server Integration:** Uses MCP (Model Context Protocol) for modular tool integration, including TavilyMCP for advanced, real-time web search in medical triage and information flows.
 - **Modular Tooling:** Easily extend the agent with new tools and capabilities via the MCP protocol.
-- **Beautiful Tailwind UI:** Minimal, responsive HTML+Tailwind interface.
+- **Resilient by Design:** Web-search results and history are token-capped to respect provider rate limits; the UI auto-retries transient errors (cold starts / redeploys) and degrades gracefully.
+- **Beautiful Tailwind UI:** Minimal, responsive chat interface with a welcome state, suggested prompts, and formatted replies.
 
 ---
 
@@ -58,11 +59,19 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 ![Hospital Agent Graph](Hospital_management_system/hospital_agent_graph.png)
 
 ```
-UI (Tailwind HTML) → FastAPI → LangGraph → Router
-  ├─ InfoNode → RAGChain → ChromaDB
-  ├─ SymptomChecker → MCP ToolNode (TavilyMCP)
-  └─ Appointment → SQLAgent → SQLite
+UI (Tailwind HTML) → FastAPI → LangGraph
+        │
+   RewriteQuery → Router ──► intent
+        ├─ Info          → RAG chain (Chroma + MiniLM)
+        ├─ SymptomChecker → MCP ToolNode (TavilyMCP web search)
+        ├─ Appointment    → SQL agent → SQLite
+        ├─ History        → SQLite
+        └─ Fallback
 ```
+
+Every turn is first normalised by **RewriteQuery**, classified by the **Router** (Groq
+structured output) into one of the intents above, then handled by the matching node.
+Conversation state is checkpointed per patient via LangGraph's async SQLite saver.
 
 ---
 
@@ -138,15 +147,44 @@ uvicorn api_setup:app_fastapi --host 0.0.0.0 --port 8000
 ```
 
 #### 7. Access the UI
-Open your browser at [http://localhost:8000](http://localhost:8000)
+Open [http://localhost:8000](http://localhost:8000) — the chat UI loads at the root.
+
+---
+
+## ⚙️ Configuration
+
+All configuration is via environment variables (in `.env`, or your host's dashboard):
+
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `GROQ_API_KEY` | ✅ | — | Groq API key — powers all LLM calls ([console.groq.com/keys](https://console.groq.com/keys)) |
+| `TAVILY_API_KEY` | ✅ | — | Tavily key — the symptom checker's web-search MCP tool ([app.tavily.com](https://app.tavily.com/)) |
+| `GROQ_MODEL` | — | `llama-3.3-70b-versatile` | Model for reasoning nodes (routing, info, symptom triage) |
+| `GROQ_SQL_MODEL` | — | `llama-3.1-8b-instant` | Model for the SQL tool agent (more reliable at tool calling) |
+| `PORT` | — | `7860` | Port the server binds to (cloud hosts inject this automatically) |
+
+> **Free-tier note:** Groq's free tier caps `llama-3.3-70b` at ~12k tokens/minute. The agent
+> trims large web-search results and conversation history to stay within that budget; under
+> heavy back-to-back use you may still hit a rate limit, which the UI surfaces gracefully and
+> retries.
 
 ---
 
 ## 💬 Example Interactions
 
 ```
-User: I have mild chest pain and shortness of breath.
-Assistant: These symptoms may indicate a cardiac issue. (Uses MCP tools to search for latest guidelines.) I recommend consulting the Cardiology department. Would you like help accessing appointment options?
+User: I have a sore throat and mild fever — what should I do?
+Assistant:
+  🔍 Follow-up Questions: None
+  📋 Possible Causes & Summary: Symptoms may point to a viral or bacterial
+     infection (cold, flu, or strep throat)… rest, fluids, and monitoring are
+     advised; see a doctor if it worsens.
+  🏥 Suggested Department: ENT
+  Would you like to book an appointment with an ENT specialist?
+
+User: What appointments do I have booked?
+Assistant: You have appointments booked with Dr. Mahesh Sharma on 2025-06-18 10:30
+           and Dr. Arun Kumar on 2025-06-20 09:00.
 ```
 
 ---
