@@ -5,8 +5,13 @@
 ![LangGraph](https://img.shields.io/badge/LangGraph-graph--based-blueviolet?logo=python)
 ![Groq](https://img.shields.io/badge/Groq-LLM-orange)
 ![SQLite](https://img.shields.io/badge/SQLite-DB-blue?logo=sqlite)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?logo=render)](https://hospital-management-agent-71h8.onrender.com/chatbot.html)
 
 A full-stack conversational hospital assistant powered by Groq (Llama 3.3), LangGraph, Retrieval-Augmented Generation, and MCP (Model Context Protocol) server-based tool calling — complete with FastAPI backend, TailwindCSS web UI, and SQLite-driven memory and appointment management.
+
+**🔗 Live demo:** [hospital-management-agent-71h8.onrender.com/chatbot.html](https://hospital-management-agent-71h8.onrender.com/chatbot.html)
+> Hosted on Render's free tier — it spins down after 15 minutes of inactivity, so the first
+> message after a while may take ~30–50s to wake the server up. Subsequent replies are fast.
 
 ---
 
@@ -179,30 +184,35 @@ Hospital_management_system/
 
 ---
 
-## 🚂 Deploy to Railway
+## 🚀 Deploy to Render
 
 This app is a long-running server (FastAPI + a Node/Tavily MCP subprocess + SQLite), so it
-belongs on a container host, **not** a serverless platform like Vercel. Railway builds the
-included `Dockerfile` directly.
+belongs on a container host, **not** a serverless platform like Vercel. [Render](https://render.com)
+builds the included `Dockerfile` directly, and its free tier needs no credit card.
 
 1. Push this repo to GitHub (already done).
-2. On [railway.app](https://railway.app): **New Project → Deploy from GitHub repo** → pick
-   `Hospital-Management-Agent`.
+2. On [render.com](https://render.com): **New + → Web Service** → connect your GitHub account →
+   select `Hospital-Management-Agent`.
 3. **Set the Root Directory** — this app's `Dockerfile` lives in the `Hospital_management_system/`
-   subfolder, so in the service's **Settings → Root Directory** enter:
+   subfolder, so in the config screen enter:
    ```
    Hospital_management_system
    ```
-   (Otherwise Railway won't find the Dockerfile.)
-4. Add environment variables under **Variables**:
+   (Otherwise Render won't find the Dockerfile.) It should auto-detect the **Docker** environment
+   from the Dockerfile there.
+4. **Instance Type**: select **Free**.
+5. Add environment variables:
    ```
    GROQ_API_KEY=your-groq-key
    TAVILY_API_KEY=your-tavily-key
    ```
    (Optional: `GROQ_MODEL`, `GROQ_SQL_MODEL` to override the defaults.)
-5. Railway builds the image and starts it. The container binds to Railway's injected `$PORT`
-   automatically. Under **Settings → Networking → Generate Domain** to get a public URL.
-6. Open `https://<your-app>.up.railway.app/chatbot.html` for the chat UI.
+6. Click **Create Web Service**. Render builds the image (~5 min first time) and gives you a URL
+   like `https://<your-app>.onrender.com`.
+7. Open `https://<your-app>.onrender.com/chatbot.html` for the chat UI.
+
+A live instance is running at
+**[hospital-management-agent-71h8.onrender.com/chatbot.html](https://hospital-management-agent-71h8.onrender.com/chatbot.html)**.
 
 ### What's inside the container (your DB question)
 
@@ -215,13 +225,16 @@ The image is fully self-contained:
 
 So you don't provision a separate database; SQLite is a file inside the container.
 
-⚠️ **One caveat:** Railway's container filesystem is **ephemeral** — on every redeploy/restart
-the SQLite files reset (the DB is re-seeded fresh, and any appointments booked at runtime or
-chat memory are lost). For a demo that's fine. To **persist** data across deploys, add a
-**Railway Volume** mounted at `/app/databases`.
+⚠️ **Two caveats of Render's free tier:**
+- The container **spins down after 15 minutes of inactivity** — the first request after idle
+  takes ~30–50s to wake up (cold start), then responses are fast.
+- The filesystem is **ephemeral** — on every redeploy/restart the SQLite files reset (re-seeded
+  fresh; any appointments booked at runtime or chat memory are lost). Fine for a demo. To
+  **persist** data across deploys, add a [Render Disk](https://render.com/docs/disks) mounted
+  at `/app/databases` (requires a paid instance type).
 
-> First cold start takes ~30–60s because the MiniLM embedding model downloads from Hugging
-> Face once; subsequent restarts are faster.
+> The first request after a cold start also downloads the MiniLM embedding model from Hugging
+> Face once — this adds to that initial wake-up time.
 
 ---
 
