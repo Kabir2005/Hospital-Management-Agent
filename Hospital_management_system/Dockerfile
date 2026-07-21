@@ -30,11 +30,11 @@ RUN mkdir -p kailash_info_store
 # Make entrypoint script executable
 RUN chmod +x /app/docker-entrypoint.sh
 
-# Expose port for FastAPI
-EXPOSE 8000
+# Expose port for FastAPI (Hugging Face Spaces expects 7860; Railway/Render inject $PORT)
+EXPOSE 7860
 
 # Set entrypoint
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # Command to run the application
-CMD ["sh", "-c", "uvicorn api_setup:app_fastapi --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn api_setup:app_fastapi --host 0.0.0.0 --port ${PORT:-7860}"]
