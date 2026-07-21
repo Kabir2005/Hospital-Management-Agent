@@ -19,3 +19,5 @@ huggingface-hub>=0.19.4
 tavily-python>=0.2.2
 requests>=2.31.0langgraph-checkpoint-sqlite>=1.0.0
 numpy<2
+langchain-classic
+langchain-text-splitters

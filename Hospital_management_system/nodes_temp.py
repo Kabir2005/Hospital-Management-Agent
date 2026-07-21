@@ -11,7 +11,10 @@ from langgraph.graph import StateGraph, add_messages
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.chains import RetrievalQA
+try:
+    from langchain.chains import RetrievalQA
+except ImportError:  # LangChain 1.x moved legacy chains to langchain-classic
+    from langchain_classic.chains import RetrievalQA
 from dotenv import load_dotenv
 from langgraph.checkpoint.sqlite import SqliteSaver
 import sqlite3
@@ -22,7 +25,7 @@ from langchain_community.tools import TavilySearchResults
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from langchain_community.document_loaders import TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 

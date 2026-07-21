@@ -6,3 +6,5 @@ __pycache__/
 Hospital_management_system/.venv/
 # generated at runtime (checkpointer memory)
 **/hospital_agent_memory.db
+# generated Chroma embeddings (rebuilt at runtime)
+Hospital_management_system/databases/Hospital_RAG_db/*/
