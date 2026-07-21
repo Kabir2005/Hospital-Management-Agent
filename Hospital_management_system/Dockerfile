@@ -14,7 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements file
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install CPU-only torch first (sentence-transformers pulls torch in; without this pip
+# resolves the default CUDA wheels, which are 1GB+ and unnecessary on CPU-only hosts
+# like Render's free tier, and blow past its build size/time limits).
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Tavily MCP

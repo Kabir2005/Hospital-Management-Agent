@@ -30,3 +30,7 @@ ENV/
 # OS specific files
 .DS_Store
 Thumbs.db
+.venv/
+*.log
+databases/hospital.db
+databases/Hospital_RAG_db/*/
