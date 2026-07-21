@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, AIMessage
 from agent_runnable import init_app, shutdown_app, config  # ✅ import init_app instead of app
+import asyncio
 import traceback
 import sys
 import os
@@ -21,11 +22,38 @@ app_fastapi.add_middleware(
 )
 
 agent_app = None  # ✅ define agent_app globally
+_init_error = None  # captures a background-init failure, if any
+
+
+async def _background_init():
+    """Initialize the agent (MCP session + graph) off the startup path.
+
+    Doing this in a background task lets uvicorn bind the port immediately, which
+    platforms like Render require (they kill the service if no port opens within
+    their scan window). The /chat endpoint waits for this to finish.
+    """
+    global agent_app, _init_error
+    try:
+        agent_app = await init_app()
+        print("✓ Agent initialized and ready.", flush=True)
+    except Exception as e:
+        _init_error = str(e)
+        traceback.print_exc(file=sys.stdout)
+
+
+async def _wait_until_ready(timeout: float = 240.0) -> bool:
+    """Block until the agent finishes initializing (or the timeout elapses)."""
+    waited = 0.0
+    while agent_app is None and _init_error is None and waited < timeout:
+        await asyncio.sleep(0.5)
+        waited += 0.5
+    return agent_app is not None
+
 
 @app_fastapi.on_event("startup")
 async def startup_event():
-    global agent_app
-    agent_app = await init_app()  # ✅ initialize app at startup
+    # Kick off initialization without blocking the port bind.
+    asyncio.create_task(_background_init())
 
 
 @app_fastapi.on_event("shutdown")
@@ -42,7 +70,12 @@ class UserInput(BaseModel):
 async def chat_endpoint(user_input: UserInput):
     global agent_app
     if agent_app is None:
-        raise HTTPException(status_code=500, detail="Agent not initialized yet.")
+        # Agent may still be warming up (MCP + model load on first boot). Wait for it.
+        ready = await _wait_until_ready()
+        if _init_error is not None:
+            raise HTTPException(status_code=500, detail=f"Agent failed to initialize: {_init_error}")
+        if not ready:
+            raise HTTPException(status_code=503, detail="Agent is still starting up, please retry shortly.")
 
     message = user_input.message.strip()
     if not message:

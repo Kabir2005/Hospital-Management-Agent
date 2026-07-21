@@ -25,6 +25,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install Tavily MCP
 RUN npm install -g tavily-mcp@0.1.4
 
+# Pre-download the RAG embedding model into the image so it is NOT fetched from the
+# Hugging Face Hub at startup. Without this, the first-boot download (rate-limited for
+# unauthenticated requests) delays the port bind long enough that Render kills the
+# service ("no open ports detected").
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
 # Copy application code
 COPY . .
 
