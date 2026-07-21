@@ -3,14 +3,15 @@
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-green?logo=fastapi)
 ![LangGraph](https://img.shields.io/badge/LangGraph-graph--based-blueviolet?logo=python)
+![Groq](https://img.shields.io/badge/Groq-LLM-orange)
 ![SQLite](https://img.shields.io/badge/SQLite-DB-blue?logo=sqlite)
 
-A full-stack conversational hospital assistant powered by Gemini, LangGraph, Retrieval-Augmented Generation, and MCP (Model Context Protocol) server-based tool calling — complete with FastAPI backend, TailwindCSS web UI, and SQLite-driven memory and appointment management.
+A full-stack conversational hospital assistant powered by Groq (Llama 3.3), LangGraph, Retrieval-Augmented Generation, and MCP (Model Context Protocol) server-based tool calling — complete with FastAPI backend, TailwindCSS web UI, and SQLite-driven memory and appointment management.
 
 ---
 
 ## 🚀 Overview
-Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant designed to streamline patient interaction, symptom triage, and appointment workflows via natural conversation. It offers a rich chat interface powered by Gemini (gemini-2.0-flash-001) and a modular backend built using LangGraph, FastAPI, SQLite, and MCP (Model Context Protocol) for advanced tool integration.
+Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant designed to streamline patient interaction, symptom triage, and appointment workflows via natural conversation. It offers a rich chat interface powered by Groq (Llama 3.3 70B) and a modular backend built using LangGraph, FastAPI, SQLite, and MCP (Model Context Protocol) for advanced tool integration.
 
 **Key Capabilities:**
 - 🔍 Answer factual queries about Kailash Hospital (departments, timings, services, etc.)
@@ -24,7 +25,7 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 
 ## ✨ Features
 - **FastAPI-powered Backend:** Robust, asynchronous API layer for the hospital agent.
-- **Gemini LLM + LangGraph State Machine:** Structured, node-based reasoning over user messages.
+- **Groq LLM + LangGraph State Machine:** Structured, node-based reasoning over user messages.
 - **Retrieval-Augmented Generation (RAG):** Answers grounded in official Kailash Hospital knowledge base using HuggingFace embeddings + Chroma.
 - **SQLite-Based Logic:** Appointment workflows and persistent memory via SQLite.
 - **MCP Server Integration:** Uses MCP (Model Context Protocol) for modular tool integration, including TavilyMCP for advanced, real-time web search in medical triage and information flows.
@@ -38,7 +39,7 @@ Kailash Hospital AI Agent is an intelligent, full-stack hospital assistant desig
 |------------|----------------------------------------------------------------------|
 | UI         | HTML5, Tailwind CSS                                                 |
 | Backend    | FastAPI (Python)                                                    |
-| LLM        | Gemini (gemini-2.0-flash-001) via ChatGoogleGenerativeAI            |
+| LLM        | Groq — Llama 3.3 70B (reasoning) + Llama 3.1 8B (SQL tools) via langchain-groq |
 | Orchestration | LangGraph                                                        |
 | RAG        | RetrievalQA, Chroma, HuggingFace (MiniLM-L6-v2)                     |
 | Memory     | LangGraph SqliteSaver (persistent, thread-based)                    |
@@ -73,7 +74,7 @@ cd Hospital-Management-Agent/Hospital_management_system
 #### 2. Environment Setup
 - Create a `.env` file with your API keys:
   ```env
-  GOOGLE_API_KEY=your-gemini-api-key
+  GROQ_API_KEY=your-groq-api-key
   TAVILY_API_KEY=your-tavily-api-key
   ```
 
@@ -115,7 +116,7 @@ pip install -r requirements.txt
 #### 4. Environment Setup
 - Copy `.env.example` to `.env` and fill in your keys:
   ```env
-  GOOGLE_API_KEY=your-gemini-api-key
+  GROQ_API_KEY=your-groq-api-key
   TAVILY_API_KEY=your-tavily-api-key
   ```
 - `kailash_info.txt` (the RAG knowledge base) is included.
@@ -175,6 +176,52 @@ Hospital_management_system/
 - **Setup:**
   - Requires Node.js and appropriate API keys in your `.env` file.
   - No manual server start needed; the backend handles launching MCP servers as needed.
+
+---
+
+## 🚂 Deploy to Railway
+
+This app is a long-running server (FastAPI + a Node/Tavily MCP subprocess + SQLite), so it
+belongs on a container host, **not** a serverless platform like Vercel. Railway builds the
+included `Dockerfile` directly.
+
+1. Push this repo to GitHub (already done).
+2. On [railway.app](https://railway.app): **New Project → Deploy from GitHub repo** → pick
+   `Hospital-Management-Agent`.
+3. **Set the Root Directory** — this app's `Dockerfile` lives in the `Hospital_management_system/`
+   subfolder, so in the service's **Settings → Root Directory** enter:
+   ```
+   Hospital_management_system
+   ```
+   (Otherwise Railway won't find the Dockerfile.)
+4. Add environment variables under **Variables**:
+   ```
+   GROQ_API_KEY=your-groq-key
+   TAVILY_API_KEY=your-tavily-key
+   ```
+   (Optional: `GROQ_MODEL`, `GROQ_SQL_MODEL` to override the defaults.)
+5. Railway builds the image and starts it. The container binds to Railway's injected `$PORT`
+   automatically. Under **Settings → Networking → Generate Domain** to get a public URL.
+6. Open `https://<your-app>.up.railway.app/chatbot.html` for the chat UI.
+
+### What's inside the container (your DB question)
+
+The image is fully self-contained:
+
+- **Python + all deps** and **Node.js + Tavily MCP** (installed at build time).
+- The **SQLite database** (`hospital.db`) — the entrypoint runs `db_setup.py` on first boot,
+  so doctors/appointments/history are seeded automatically.
+- The **Chroma RAG store** — rebuilt from `kailash_info.txt` on startup.
+
+So you don't provision a separate database; SQLite is a file inside the container.
+
+⚠️ **One caveat:** Railway's container filesystem is **ephemeral** — on every redeploy/restart
+the SQLite files reset (the DB is re-seeded fresh, and any appointments booked at runtime or
+chat memory are lost). For a demo that's fine. To **persist** data across deploys, add a
+**Railway Volume** mounted at `/app/databases`.
+
+> First cold start takes ~30–60s because the MiniLM embedding model downloads from Hugging
+> Face once; subsequent restarts are faster.
 
 ---
 

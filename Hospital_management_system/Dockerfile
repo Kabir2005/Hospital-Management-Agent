@@ -37,4 +37,4 @@ EXPOSE 8000
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # Command to run the application
-CMD ["uvicorn", "api_setup:app_fastapi", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn api_setup:app_fastapi --host 0.0.0.0 --port ${PORT:-8000}"]

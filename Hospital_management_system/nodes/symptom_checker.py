@@ -9,7 +9,7 @@ from datetime import datetime
 from langgraph.graph import END
 from typing import Annotated, TypedDict, Optional
 from langgraph.graph import StateGraph, add_messages
-from langchain_google_genai import ChatGoogleGenerativeAI
+from llm_provider import get_llm
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 try:
@@ -37,12 +37,12 @@ from mcp.client.stdio import stdio_client
 from mcp.client.stdio import StdioServerParameters
 from langchain_mcp_adapters.tools import load_mcp_tools
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+from llm_provider import get_llm
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
 
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-001")
+llm = get_llm()
 
 # ✅ Function to load Tavily MCP tool via stdio
 async def load_tavily_mcp_tool():

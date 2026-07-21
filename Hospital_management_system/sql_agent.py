@@ -1,3 +1,4 @@
+import os
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.prebuilt import create_react_agent
 from langgraph.prebuilt.tool_node import ToolNode
@@ -8,7 +9,7 @@ from datetime import datetime
 from langgraph.graph import END
 from typing import Annotated, TypedDict, Optional
 from langgraph.graph import StateGraph, add_messages
-from langchain_google_genai import ChatGoogleGenerativeAI
+from llm_provider import get_llm
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 try:
@@ -36,9 +37,8 @@ def get_todays_date() -> str:
     return datetime.now().strftime("%B %d, %Y")
 
 
-llm=ChatGoogleGenerativeAI(model="gemini-2.0-flash-001")
+llm=get_llm(os.getenv("GROQ_SQL_MODEL", "llama-3.1-8b-instant"))
 
-import os
 _DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "databases", "hospital.db")
 db = SQLDatabase.from_uri(f"sqlite:///{_DB_FILE}")
 toolkit = SQLDatabaseToolkit(db=db, llm=llm)

@@ -9,7 +9,7 @@ from datetime import datetime
 from langgraph.graph import END
 from typing import Annotated, TypedDict, Optional
 from langgraph.graph import StateGraph, add_messages
-from langchain_google_genai import ChatGoogleGenerativeAI
+from llm_provider import get_llm
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 try:

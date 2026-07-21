@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
+import os
 import requests
 import sys
 
 def check_health():
     try:
-        response = requests.get('http://localhost:8000/')
+        response = requests.get(f"http://localhost:{os.getenv('PORT','8000')}/")
         if response.status_code == 200:
             print('Health check passed!')
             return 0

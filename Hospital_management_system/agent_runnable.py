@@ -1,6 +1,6 @@
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.graph import StateGraph, END
-from langchain_google_genai import ChatGoogleGenerativeAI
+from llm_provider import get_llm
 from dotenv import load_dotenv
 import asyncio
 import os
@@ -21,7 +21,7 @@ from nodes.fallback import *
 
 load_dotenv()
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-001")
+llm = get_llm()
 
 graph = StateGraph(HospitalState)
 graph.add_node("rewrite_query", rewrite_query)

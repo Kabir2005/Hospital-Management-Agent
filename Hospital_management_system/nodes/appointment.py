@@ -9,7 +9,7 @@ from datetime import datetime
 from langgraph.graph import END
 from typing import Annotated, TypedDict, Optional
 from langgraph.graph import StateGraph, add_messages
-from langchain_google_genai import ChatGoogleGenerativeAI
+from llm_provider import get_llm
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 try:
@@ -32,7 +32,7 @@ from agent_state import HospitalState
 from sql_agent import sql_agent
 load_dotenv()
 
-llm=ChatGoogleGenerativeAI(model="gemini-2.0-flash-001")
+llm=get_llm()
 # Node: appointment
 def appointment(state: HospitalState) -> HospitalState:
         # Extract relevant patient info

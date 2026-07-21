@@ -8,7 +8,7 @@ from datetime import datetime
 from langgraph.graph import END
 from typing import Annotated, TypedDict, Optional
 from langgraph.graph import StateGraph, add_messages
-from langchain_google_genai import ChatGoogleGenerativeAI
+from llm_provider import get_llm
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 try:
@@ -36,7 +36,7 @@ def get_todays_date() -> str:
     """Returns today's date in the format: 'June 17, 2025'."""
     return datetime.now().strftime("%B %d, %Y")
 
-llm=ChatGoogleGenerativeAI(model="gemini-2.0-flash-001")
+llm=get_llm()
 
 
 search_tool=TavilySearchResults()
