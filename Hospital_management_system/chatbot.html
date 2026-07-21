@@ -200,6 +200,37 @@
       userInput.focus();
     }
 
+    function friendlyError(detail) {
+      const d = String(detail || "");
+      if (/rate_limit|too large|413|429|quota/i.test(d))
+        return "I'm getting a lot of requests right now and hit a usage limit. Please wait a moment and try again.";
+      return "Sorry, I ran into a problem answering that. Please try again, or rephrase your message.";
+    }
+
+    // Single attempt. Returns {done:true,text} on a final answer/error, or {retry:true}
+    // for transient failures (cold start, redeploy, network) that are worth retrying.
+    async function attemptChat(message) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 120000); // 2 min ceiling
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message, patient_name: patientName, patient_id: patientId }),
+          signal: controller.signal,
+        });
+        if ([502, 503, 504].includes(res.status)) return { retry: true };
+        let data = {};
+        try { data = await res.json(); } catch (_) { return { retry: true }; } // non-JSON (e.g. proxy error page)
+        if (res.ok) return { done: true, text: data.response || "Sorry, I couldn't generate a response." };
+        return { done: true, text: friendlyError(data.detail) };
+      } catch (e) {
+        return { retry: true }; // network error or timeout
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     async function sendMessage() {
       const message = userInput.value.trim();
       if (!message) return;
@@ -209,32 +240,31 @@
       suggestionsDiv.innerHTML = "";
       userInput.disabled = true;
       sendBtn.disabled = true;
-      typingLabel.textContent = firstMessage ? "Waking up the assistant (first message can take ~30s)…" : "Assistant is typing…";
       typingIndicator.classList.remove("hidden");
 
-      try {
-        const response = await fetch("/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, patient_name: patientName, patient_id: patientId }),
-        });
-        const data = await response.json();
-        if (response.ok) {
-          appendMessage("bot", data.response || "Sorry, I couldn't generate a response.");
-        } else if (response.status === 503) {
-          appendMessage("bot", "I'm still starting up — please send that again in a few seconds.");
-        } else {
-          appendMessage("bot", "Something went wrong: " + (data.detail || "please try again."));
-        }
-      } catch (e) {
-        appendMessage("bot", "I couldn't reach the server. Please check your connection and try again.");
-      } finally {
-        firstMessage = false;
-        userInput.disabled = false;
-        sendBtn.disabled = false;
-        typingIndicator.classList.add("hidden");
-        userInput.focus();
+      const maxAttempts = 4;
+      let result;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        typingLabel.textContent =
+          attempt > 1 ? `Server is waking up… retrying (${attempt}/${maxAttempts})`
+          : firstMessage ? "Waking up the assistant (first message can take ~30s)…"
+          : "Assistant is typing…";
+        result = await attemptChat(message);
+        if (result.done) break;
+        if (attempt < maxAttempts) await new Promise((r) => setTimeout(r, 3000 * attempt)); // backoff
       }
+
+      if (result && result.done) {
+        appendMessage("bot", result.text);
+      } else {
+        appendMessage("bot", "The assistant is taking longer than usual to respond — this can happen on the free tier after it's been idle. Please try again in a moment.");
+      }
+
+      firstMessage = false;
+      userInput.disabled = false;
+      sendBtn.disabled = false;
+      typingIndicator.classList.add("hidden");
+      userInput.focus();
     }
 
     function resetChat() {

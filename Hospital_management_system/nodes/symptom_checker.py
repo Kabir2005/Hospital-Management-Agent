@@ -89,6 +89,13 @@ class SymptomCheckerResponse(BaseModel):
 # ✅ Updated symptom_checker function to load MCP tools and bind them
 async def symptom_checker(state: HospitalState, tavily_tools) -> HospitalState:
     query = state["messages"][-1].content
+    # After a web search, the last message is the Tavily tool result — often several
+    # pages of text, and its content may be a list of blocks rather than a string.
+    # Feeding all of it back would blow past the model's per-minute token limit
+    # (Groq free tier caps llama-3.3-70b at 12k TPM), so coerce to text and cap it.
+    query = str(query)
+    if len(query) > 4000:
+        query = query[:4000] + " …[trimmed]"
 
     system_prompt = """
 You are a medically knowledgeable assistant helping users understand their symptoms.

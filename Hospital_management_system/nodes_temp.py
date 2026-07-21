@@ -163,7 +163,7 @@ with SqliteSaver.from_conn_string("/app/databases/hospital_agent_memory.db") as 
 
     def router(state: HospitalState) -> Command[Literal["info", "appointment", "symptom_checker", "history", "rewrite_query", "fallback"]]:
         user_query = state["messages"][-1].content
-        history = "\n".join([m.content for m in state["messages"][:-1]])
+        history = "\n".join([str(m.content) for m in state["messages"][:-1]])[-3000:]  # coerce (tool msgs can be lists) + cap length
         count = state.get("rewrite_count", 0)
 
 
@@ -250,7 +250,7 @@ Your answer (just one label):
                 "rewrite_count": count  # Don't increment further
             }
 
-        history = "\n".join([m.content for m in state["messages"][:-1]])
+        history = "\n".join([str(m.content) for m in state["messages"][:-1]])[-3000:]  # coerce (tool msgs can be lists) + cap length
         current = state["messages"][-1].content
         prompt = f"""You are a helpful assistant designed to improve user queries for a hospital chatbot (Kailash Hospital). 
         Your goal is to rewrite the user's question to be fully self-contained, unambiguous, and contextually complete.
